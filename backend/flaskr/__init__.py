@@ -38,6 +38,8 @@ def create_app(test_config=None):
     @app.route('/categories', methods=['GET'])
     def get_categories():
         categories = Category.query.all()
+        if len(categories)== 0:
+            abort(404)
         formated_categories = [category.format() for category in categories]
         print(formated_categories)
         return jsonify({
@@ -65,17 +67,20 @@ def create_app(test_config=None):
             end = start+QUESTIONS_PER_PAGE
             questions_formatted = [question.format() for question in questions]
             questions_per_page = questions_formatted[start:end]
+            if len(questions_per_page)==0:
+                abort(404)
             categories = [category.format()
                           for category in Category.query.order_by(Category.id).all()]
             # print(questions_formatted)
             return jsonify({
+                'success':True,
                 'questions': questions_per_page,
                 'total_questions': len(questions),
                 'categories': {int(category['id']): category['type'] for category in categories},
                 'current_category': [question['category'] for question in questions_per_page]
             })
         except:
-            abort(404)
+            abort(422)
 
     '''
   @TODO:
@@ -88,12 +93,14 @@ def create_app(test_config=None):
     def delete_question(question_id):
         try:
             question_to_delete = Question.query.get(question_id)
+            if len(question_to_delete) == 0:
+                abort(404)
             question_to_delete.delete()
             return jsonify({
                 'success': True
             })
         except:
-            abort(404)
+            abort(422)
     '''
   @TODO:
   Create an endpoint to POST a new question,
@@ -134,18 +141,19 @@ def create_app(test_config=None):
     def search_qustion():
         try:
             data = request.get_json()
-            search_term = data.get('searchTerm', None)
+            search_term = data.get('searchTerm',None)
             results = Question.query.filter(
-                Question.question.ilike('%{}%'.format(search_term))).all()
+                Question.question.ilike('%{}%'.format(search_term))).all()    
             results_formated = [question.format()
                                 for question in results]
 
             return jsonify({
+                'success':True,
                 'questions': results_formated,
                 'total_questions': len(results),
                 'currentCategory': [question['category'] for question in results_formated]})
         except:
-            abort(500)
+            abort(404)
     '''
   @TODO:
   Create a GET endpoint to get questions based on category.
@@ -159,15 +167,15 @@ def create_app(test_config=None):
         try:
             questions = Question.query.filter(
                 Question.category == category_id).all()
-
             questions_formatted = [question.format() for question in questions]
             return jsonify({
+                'success':True,
                 'questions': questions_formatted,
                 'total_questions': len(questions),
                 'currnet_category': Category.query.get(category_id).type
             })
         except:
-            abort(500)
+            abort(404)
     '''
   @TODO:
   Create a POST endpoint to get questions to play the quiz.
@@ -181,32 +189,56 @@ def create_app(test_config=None):
   '''
     @app.route('/quizzes', methods=['POST'])
     def get_next_question():
-        data = request.get_json()
-        previous_questions = data.get('previous_questions', None)
-        quiz_category = data.get('quiz_category', None)
-        print(quiz_category)
-        if quiz_category['id'] == 0:
-            questions_by_category = Question.query.all()
-        else:
-            questions_by_category = Question.query.filter(Question.category ==
-                                                          int(quiz_category['id']))
-        questions_by_category_formatted = [
-            question.format() for question in questions_by_category]
-        next_question = random.choice(questions_by_category_formatted)
-        while next_question['id'] in previous_questions:
+        try:
+            data = request.get_json()
+            previous_questions = data.get('previous_questions', None)
+            quiz_category = data.get('quiz_category', None)
+            if quiz_category['id'] == 0:
+                questions_by_category = Question.query.all()
+            else:
+                questions_by_category = Question.query.filter(Question.category ==
+                                                            int(quiz_category['id']))
+            questions_by_category_formatted = [
+                question.format() for question in questions_by_category]
             next_question = random.choice(questions_by_category_formatted)
-            if len(previous_questions) == len(questions_by_category_formatted):
-                next_question = False
-                break
+            while next_question['id'] in previous_questions:
+                next_question = random.choice(questions_by_category_formatted)
+                if len(previous_questions) == len(questions_by_category_formatted):
+                    next_question = False
+                    break
 
-        return jsonify({
-            'question': next_question
-        })
-
+            return jsonify({
+                'success':True,
+                'question': next_question
+            })
+        except:
+            abort(404)
     '''
   @TODO:
   Create error handlers for all expected errors
   including 404 and 422.
   '''
+    @app.errorhandler(404)
+    def not_found(error):
+        return jsonify({
+            'success':False,
+            'error':404,
+            'message':'The server can not find the requested resource'
+        }),404
 
+    @app.errorhandler(422)
+    def unprocessable_entity(error):
+        return jsonify({
+            'success':False,
+            'error':422,
+            'message':'The request was well-formed but was unable to be followed due to semantic errors'
+        }),422    
+
+    @app.errorhandler(500)
+    def internal_server_error(error):
+        return jsonify({
+            'success':False,
+            'error':500,
+            'message':'The server has encountered a situation it does not know how to handle'
+        }),500
     return app
