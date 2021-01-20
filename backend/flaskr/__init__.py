@@ -16,11 +16,12 @@ def create_app(test_config=None):
     CORS(app)
 
     '''
-  @TODO: Set up CORS. Allow '*' for origins. Delete the sample route after completing the TODOs
+  @DONE: Set up CORS. Allow '*' for origins.
+   Delete the sample route after completing the TODOs
   '''
 
     '''
-  @TODO: Use the after_request decorator to set Access-Control-Allow
+  @DONE: Use the after_request decorator to set Access-Control-Allow
   '''
     @app.after_request
     def after_request(response):
@@ -31,23 +32,26 @@ def create_app(test_config=None):
         return response
 
     '''
-  @TODO:
+  @DONE:
   Create an endpoint to handle GET requests
   for all available categories.
   '''
-    @app.route('/categories', methods=['GET'])
+    @app.route('/categories', methods=['GET', 'POST'])
     def get_categories():
+        if request.method == 'POST':
+            abort(404)
         categories = Category.query.all()
-        if len(categories)== 0:
+        if len(categories) == 0:
             abort(404)
         formated_categories = [category.format() for category in categories]
         print(formated_categories)
         return jsonify({
-            'categories': {category['id']: category['type'] for category in formated_categories}
-        })
+            'success': True,
+            'categories': {
+                       category['id']: category['type'] for category in formated_categories}})
 
     '''
-  @TODO:
+  @DONE:
   Create an endpoint to handle GET requests for questions,
   including pagination (every 10 questions).
   This endpoint should return a list of questions,
@@ -63,27 +67,28 @@ def create_app(test_config=None):
         try:
             page = request.args.get('page', 1, type=int)
             questions = Question.query.order_by(Question.id).all()
-            start = (page - 1)*QUESTIONS_PER_PAGE
-            end = start+QUESTIONS_PER_PAGE
+            start = (page - 1) * QUESTIONS_PER_PAGE
+            end = start + QUESTIONS_PER_PAGE
             questions_formatted = [question.format() for question in questions]
             questions_per_page = questions_formatted[start:end]
-            if len(questions_per_page)==0:
+            if len(questions_per_page) == 0:
                 abort(404)
-            categories = [category.format()
-                          for category in Category.query.order_by(Category.id).all()]
+            categories = [
+                category.format() for category in Category.query.order_by(
+                    Category.id).all()]
             # print(questions_formatted)
             return jsonify({
-                'success':True,
+                'success': True,
                 'questions': questions_per_page,
                 'total_questions': len(questions),
                 'categories': {int(category['id']): category['type'] for category in categories},
                 'current_category': [question['category'] for question in questions_per_page]
             })
-        except:
+        except BaseException:
             abort(422)
 
     '''
-  @TODO:
+  @DONE:
   Create an endpoint to DELETE question using a question ID.
 
   TEST: When you click the trash icon next to a question, the question will be removed.
@@ -93,16 +98,17 @@ def create_app(test_config=None):
     def delete_question(question_id):
         try:
             question_to_delete = Question.query.get(question_id)
-            if len(question_to_delete) == 0:
+            if not (question_to_delete):
                 abort(404)
             question_to_delete.delete()
             return jsonify({
-                'success': True
+                'success': True,
+                'ID': question_id
             })
-        except:
+        except BaseException:
             abort(422)
     '''
-  @TODO:
+  @DONE:
   Create an endpoint to POST a new question,
   which will require the question and answer text,
   category, and difficulty score.
@@ -125,10 +131,10 @@ def create_app(test_config=None):
             return jsonify({
                 'success': True
             })
-        except:
+        except BaseException:
             abort(500)
     '''
-  @TODO:
+  @DONE:
   Create a POST endpoint to get questions based on a search term.
   It should return any questions for whom the search term
   is a substring of the question.
@@ -141,21 +147,21 @@ def create_app(test_config=None):
     def search_qustion():
         try:
             data = request.get_json()
-            search_term = data.get('searchTerm',None)
+            search_term = data.get('searchTerm', None)
             results = Question.query.filter(
-                Question.question.ilike('%{}%'.format(search_term))).all()    
+                Question.question.ilike('%{}%'.format(search_term))).all()
             results_formated = [question.format()
                                 for question in results]
 
             return jsonify({
-                'success':True,
+                'success': True,
                 'questions': results_formated,
                 'total_questions': len(results),
                 'currentCategory': [question['category'] for question in results_formated]})
-        except:
+        except BaseException:
             abort(404)
     '''
-  @TODO:
+  @DONE:
   Create a GET endpoint to get questions based on category.
 
   TEST: In the "List" tab / main screen, clicking on one of the
@@ -169,15 +175,15 @@ def create_app(test_config=None):
                 Question.category == category_id).all()
             questions_formatted = [question.format() for question in questions]
             return jsonify({
-                'success':True,
+                'success': True,
                 'questions': questions_formatted,
                 'total_questions': len(questions),
                 'currnet_category': Category.query.get(category_id).type
             })
-        except:
+        except BaseException:
             abort(404)
     '''
-  @TODO:
+  @DONE:
   Create a POST endpoint to get questions to play the quiz.
   This endpoint should take category and previous question parameters
   and return a random questions within the given category,
@@ -196,49 +202,50 @@ def create_app(test_config=None):
             if quiz_category['id'] == 0:
                 questions_by_category = Question.query.all()
             else:
-                questions_by_category = Question.query.filter(Question.category ==
-                                                            int(quiz_category['id']))
+                questions_by_category = Question.query.filter(
+                    Question.category == int(quiz_category['id']))
             questions_by_category_formatted = [
                 question.format() for question in questions_by_category]
             next_question = random.choice(questions_by_category_formatted)
             while next_question['id'] in previous_questions:
                 next_question = random.choice(questions_by_category_formatted)
-                if len(previous_questions) == len(questions_by_category_formatted):
+                if len(previous_questions) == len(
+                        questions_by_category_formatted):
                     next_question = False
                     break
 
             return jsonify({
-                'success':True,
+                'success': True,
                 'question': next_question
             })
-        except:
+        except BaseException:
             abort(404)
     '''
-  @TODO:
+  @DONE:
   Create error handlers for all expected errors
   including 404 and 422.
   '''
     @app.errorhandler(404)
     def not_found(error):
         return jsonify({
-            'success':False,
-            'error':404,
-            'message':'The server can not find the requested resource'
-        }),404
+            'success': False,
+            'error': 404,
+            'message': 'The server can not find the requested resource'
+        }), 404
 
     @app.errorhandler(422)
     def unprocessable_entity(error):
         return jsonify({
-            'success':False,
-            'error':422,
-            'message':'The request was well-formed but was unable to be followed due to semantic errors'
-        }),422    
+            'success': False,
+            'error': 422,
+            'message': 'The request was well-formed but was unable to be followed due to semantic errors'
+        }), 422
 
     @app.errorhandler(500)
     def internal_server_error(error):
         return jsonify({
-            'success':False,
-            'error':500,
-            'message':'The server has encountered a situation it does not know how to handle'
-        }),500
+            'success': False,
+            'error': 500,
+            'message': 'The server has encountered a situation it does not know how to handle'
+        }), 500
     return app
